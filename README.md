@@ -1,6 +1,6 @@
 # 🧾 WesLedger
 
-> **Status:** System v1.4 (Stable)  
+> **Status:** System v1.5 (Secure)  
 > **Architecture:** Serverless / Sovereign  
 > **Cost:** $0.00 / month
 
@@ -19,7 +19,7 @@ Most financial apps are traps: they charge you a monthly subscription to sell yo
 
 ```mermaid
 graph LR
-    A[React Frontend] -- HTTPS JSON --> B[Google Apps Script]
+    A[React Frontend] -- HTTPS + Token --> B[Google Apps Script]
     B -- Read/Write --> C[(Google Sheets)]
 ```
 
@@ -45,15 +45,20 @@ The system uses a "Headless" approach where the logic lives in the browser, and 
 
 ### Phase 2: The Gateway (Google Apps Script)
 
-1. inside your Google Sheet, go to **Extensions > Apps Script**.
+1. Inside your Google Sheet, go to **Extensions > Apps Script**.
 2. Rename the project to `WesLedger API`.
-3. Clear the default code in `Code.gs` and replace it with the **Backend Code** found in `services/ledgerService.ts` of this repository.
-4. Click **Deploy > New Deployment**.
+3. **Get the Code:**
+   - Open the WesLedger Web App (this repo running locally).
+   - Click **Config** > **Backend Code**.
+   - Copy the script.
+4. Paste it into `Code.gs` in the Google Script editor.
+5. **CRITICAL:** Change the `API_SECRET` variable at the top of the file to a strong password.
+6. Click **Deploy > New Deployment**.
    - **Select type:** Web app.
    - **Description:** `v1`.
    - **Execute as:** `Me` (your email).
-   - **Who has access:** `Anyone` (Important: This allows the React app to hit the API without OAuth complexity. Security is handled by the secrecy of the URL).
-5. Copy the **Web App URL** (ends in `/exec`).
+   - **Who has access:** `Anyone` (This allows the React app to hit the endpoint; security is handled by your API Token).
+7. Copy the **Web App URL** (ends in `/exec`).
 
 ### Phase 3: The Interface (Frontend)
 
@@ -69,16 +74,18 @@ The system uses a "Headless" approach where the logic lives in the browser, and 
 4. When the app loads, click the **Config** button in the top right.
 5. Switch Mode to **LIVE**.
 6. Paste your **Web App URL** from Phase 2.
-7. Click **Save Configuration**.
+7. Paste your **API Secret Token** (the password you set in step 2.5).
+8. Click **Save Configuration**.
 
 ---
 
 ## 🛡 Security Philosophy
 
-This system relies on **Security by Obscurity** for the API endpoint. 
-- The API URL acts as your "Private Key". 
-- Do not share the URL publicly.
-- Because the script runs as "Me" (You), only your script has permission to edit your sheet, but the "Anyone" access allows the standard `fetch` request from the browser to trigger it.
+**System v1.5** uses **Bearer Token Authentication**.
+
+- **The Lock:** The Google Apps Script checks every request for a valid `token`.
+- **The Key:** Your React App stores this token in your browser's LocalStorage.
+- **The Protocol:** Even if someone discovers your API URL, they cannot read or write data without the Token.
 
 ---
 
@@ -89,6 +96,7 @@ This system relies on **Security by Obscurity** for the API endpoint.
 - **Search & Filter:** Instant local filtering by keyword or category.
 - **Export:** One-click CSV export of your current view.
 - **Demo Mode:** Works offline with LocalStorage for testing.
+- **Command Center:** Get your backend deployment code directly from the UI.
 
 ---
 

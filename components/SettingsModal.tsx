@@ -13,6 +13,11 @@ const API_SECRET = "wes-ledger-secret"; // <--- CHANGE THIS to your own strong p
 // ---------------------
 
 function doGet(e) {
+  // 0. Handle Manual Execution (Play Button in Editor)
+  if (!e || !e.parameter) {
+    return ContentService.createTextOutput("System Online. Access this URL via your WesLedger App.");
+  }
+
   // 1. Security Check
   const token = e.parameter.token;
   if (token !== API_SECRET) {
@@ -41,6 +46,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // 0. Handle Manual Execution
+  if (!e || !e.postData) {
+    return ContentService.createTextOutput("System Online. Access this URL via your WesLedger App.");
+  }
+
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000); // Prevent race conditions
