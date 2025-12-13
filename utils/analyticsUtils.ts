@@ -48,23 +48,41 @@ export const calculateTopExpenses = (entries: LedgerEntry[]): CategoryDataPoint[
 };
 
 export const generateSVGPoints = (chartData: ChartDataPoint[], width: number, height: number, padding: number): string => {
-  if (chartData.length < 2) return "";
+  if (chartData.length === 0) return "";
+  
+  // If we only have 1 point, we artificially create a "flat" line across the middle
+  if (chartData.length === 1) {
+    const y = height / 2;
+    return `${padding},${y} ${width - padding},${y}`;
+  }
 
   const maxVal = Math.max(...chartData.map(d => d.val));
   const minVal = Math.min(...chartData.map(d => d.val));
-  const range = maxVal - minVal || 1;
+  const range = maxVal - minVal;
 
   return chartData.map((d, i) => {
     const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
     // Invert Y because SVG 0 is top
-    const y = height - padding - ((d.val - minVal) / range) * (height - padding * 2);
+    // If range is 0 (all values same), put in middle
+    const y = range === 0 
+      ? height / 2 
+      : height - padding - ((d.val - minVal) / range) * (height - padding * 2);
     return `${x},${y}`;
   }).join(' ');
 };
 
 export const generateAreaPath = (points: string, width: number, height: number, padding: number): string => {
   if (!points) return "";
-  const firstX = padding;
-  const lastX = width - padding;
+  
+  // Parse first and last X from the points string to ensure closed loop aligns
+  const pointList = points.split(' ');
+  const firstPoint = pointList[0];
+  const lastPoint = pointList[pointList.length - 1];
+  
+  if (!firstPoint || !lastPoint) return "";
+
+  const firstX = firstPoint.split(',')[0];
+  const lastX = lastPoint.split(',')[0];
+
   return `${points} L ${lastX},${height} L ${firstX},${height} Z`;
 };
