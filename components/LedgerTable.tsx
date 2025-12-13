@@ -7,9 +7,11 @@ interface LedgerTableProps {
   isLoading: boolean;
   onEdit: (entry: LedgerEntry) => void;
   onDelete: (entry: LedgerEntry) => void;
+  currency: string;
+  locale: string;
 }
 
-export const LedgerTable: React.FC<LedgerTableProps> = ({ entries, isLoading, onEdit, onDelete }) => {
+export const LedgerTable: React.FC<LedgerTableProps> = ({ entries, isLoading, onEdit, onDelete, currency, locale }) => {
   if (isLoading && entries.length === 0) {
     return (
       <div className="w-full p-12 text-center text-slate-400">
@@ -53,7 +55,7 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({ entries, isLoading, on
                 </span>
               </td>
               <td className={`px-6 py-3 text-right font-mono font-bold tabular-nums ${entry.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                {formatCurrency(entry.amount)}
+                {formatCurrency(entry.amount, currency, locale)}
               </td>
               <td className="px-6 py-3 text-right">
                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

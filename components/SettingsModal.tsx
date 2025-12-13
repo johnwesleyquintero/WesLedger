@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppConfig } from '../types';
+import { CURRENCY_OPTIONS } from '../constants';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -152,6 +153,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, c
     setTimeout(() => setCopyFeedback('Copy Code'), 2000);
   };
 
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedCode = e.target.value;
+    const selectedOption = CURRENCY_OPTIONS.find(c => c.code === selectedCode);
+    if (selectedOption) {
+      setLocalConfig({
+        ...localConfig,
+        currency: selectedOption.code,
+        locale: selectedOption.locale
+      });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -183,7 +196,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, c
           {activeTab === 'CONFIG' && (
             <div className="space-y-6">
               
+              {/* Currency Selector */}
               <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Base Currency</label>
+                <select
+                  className="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 bg-white"
+                  value={localConfig.currency}
+                  onChange={handleCurrencyChange}
+                >
+                  {CURRENCY_OPTIONS.map(opt => (
+                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Operation Mode</label>
                 <div className="flex gap-4">
                   <button

@@ -4,9 +4,11 @@ import { formatCurrency } from '../constants';
 
 interface AnalyticsProps {
   entries: LedgerEntry[];
+  currency: string;
+  locale: string;
 }
 
-export const Analytics: React.FC<AnalyticsProps> = ({ entries }) => {
+export const Analytics: React.FC<AnalyticsProps> = ({ entries, currency, locale }) => {
   
   // 1. Prepare Data for Chart (Daily Balance)
   const chartData = useMemo(() => {
@@ -132,7 +134,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ entries }) => {
                  <div key={item.cat}>
                      <div className="flex justify-between text-sm mb-1">
                          <span className="font-medium text-slate-700">{item.cat}</span>
-                         <span className="font-mono text-slate-600">{formatCurrency(item.val)}</span>
+                         <span className="font-mono text-slate-600">{formatCurrency(item.val, currency, locale)}</span>
                      </div>
                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                          <div 

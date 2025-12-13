@@ -29,7 +29,19 @@ const App: React.FC = () => {
   // Load Config
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem(INITIAL_CONFIG_KEY);
-    return saved ? JSON.parse(saved) : { mode: 'LIVE', gasDeploymentUrl: DEFAULT_GAS_URL, apiToken: '' };
+    const defaultConfig: AppConfig = { 
+      mode: 'LIVE', 
+      gasDeploymentUrl: DEFAULT_GAS_URL, 
+      apiToken: '',
+      currency: 'USD',
+      locale: 'en-US'
+    };
+    
+    if (saved) {
+      // Merge saved config with defaults to ensure new fields (currency/locale) exist
+      return { ...defaultConfig, ...JSON.parse(saved) };
+    }
+    return defaultConfig;
   });
 
   // --- Effects ---
@@ -257,10 +269,18 @@ const App: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Financial Summary */}
-        <SummaryCards metrics={metrics} />
+        <SummaryCards 
+          metrics={metrics} 
+          currency={config.currency} 
+          locale={config.locale} 
+        />
         
         {/* Analytics Visualization (v1.7) */}
-        <Analytics entries={filteredEntries} />
+        <Analytics 
+          entries={filteredEntries} 
+          currency={config.currency} 
+          locale={config.locale} 
+        />
 
         {/* Input Form */}
         <TransactionForm 
@@ -321,6 +341,8 @@ const App: React.FC = () => {
              isLoading={isLoading} 
              onEdit={handleEditClick}
              onDelete={handleDeleteClick}
+             currency={config.currency}
+             locale={config.locale}
            />
         </div>
 

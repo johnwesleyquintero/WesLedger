@@ -18,6 +18,8 @@ export interface AppConfig {
   mode: 'DEMO' | 'LIVE';
   gasDeploymentUrl: string;
   apiToken: string; // The Shared Secret
+  currency: string; // e.g. 'USD', 'PHP'
+  locale: string;   // e.g. 'en-US', 'en-PH'
 }
 
 export interface MetricSummary {
