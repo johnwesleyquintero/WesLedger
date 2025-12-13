@@ -3,130 +3,7 @@ import { LOCAL_STORAGE_KEY } from '../constants';
 
 /* 
   === GOOGLE APPS SCRIPT BACKEND CODE (v4 - Robust) ===
-  
-  Replace your entire Code.gs with this.
-  
-  CRITICAL: Change the API_SECRET variable below to your own password.
-  Don't forget to deploy as 'New Version'.
-
-  ```javascript
-  // --- CONFIGURATION ---
-  const API_SECRET = "wes-ledger-secret"; // <--- CHANGE THIS to your own strong password
-  // ---------------------
-
-  function doGet(e) {
-    // 0. Handle Manual Execution (Play Button in Editor)
-    if (!e || !e.parameter) {
-      return ContentService.createTextOutput("System Online. Access this URL via your WesLedger App.");
-    }
-
-    // 1. Security Check
-    const token = e.parameter.token;
-    if (token !== API_SECRET) {
-      return errorResponse("Unauthorized: Invalid Token");
-    }
-
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ledger');
-    if (!sheet) return errorResponse("Sheet 'ledger' not found");
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 1) return jsonResponse([]);
-
-    const headers = data.shift(); // Remove headers
-    
-    // Schema: Date(0), Desc(1), Amount(2), Category(3), CreatedAt(4), ID(5)
-    const entries = data.map(row => ({
-      date: row[0],
-      description: row[1],
-      amount: row[2],
-      category: row[3],
-      createdAt: row[4],
-      id: row[5] || "" // Handle legacy rows without IDs
-    })).filter(e => e.date !== "");
-
-    return jsonResponse(entries);
-  }
-
-  function doPost(e) {
-    // 0. Handle Manual Execution
-    if (!e || !e.postData) {
-      return ContentService.createTextOutput("System Online. Access this URL via your WesLedger App.");
-    }
-
-    const lock = LockService.getScriptLock();
-    try {
-      lock.waitLock(10000); // Prevent race conditions
-      
-      const payload = JSON.parse(e.postData.contents);
-      
-      // 1. Security Check
-      if (payload.token !== API_SECRET) {
-         return errorResponse("Unauthorized: Invalid Token");
-      }
-
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ledger');
-      if (!sheet) return errorResponse("Sheet 'ledger' not found");
-      
-      const action = payload.action || 'create';
-      const entry = payload.entry;
-
-      if (action === 'create') {
-        const id = entry.id || Utilities.getUuid();
-        const newRow = [
-          entry.date,
-          entry.description,
-          entry.amount,
-          entry.category,
-          new Date().toISOString(),
-          id
-        ];
-        sheet.appendRow(newRow);
-        return jsonResponse({ status: "success", id: id });
-      } 
-      
-      else if (action === 'update') {
-        if (!entry.id) return errorResponse("ID required for update");
-        const data = sheet.getDataRange().getValues();
-        // Skip header (row 0), so loop starts at 1
-        for (let i = 1; i < data.length; i++) {
-          if (data[i][5] == entry.id) {
-            const range = sheet.getRange(i + 1, 1, 1, 4);
-            range.setValues([[entry.date, entry.description, entry.amount, entry.category]]);
-            return jsonResponse({ status: "updated" });
-          }
-        }
-        return errorResponse("ID not found");
-      }
-      
-      else if (action === 'delete') {
-        if (!entry.id) return errorResponse("ID required for delete");
-        const data = sheet.getDataRange().getValues();
-        for (let i = 1; i < data.length; i++) {
-          if (data[i][5] == entry.id) {
-            sheet.deleteRow(i + 1);
-            return jsonResponse({ status: "deleted" });
-          }
-        }
-        return errorResponse("ID not found");
-      }
-
-    } catch (err) {
-      return errorResponse(err.toString());
-    } finally {
-      lock.releaseLock();
-    }
-  }
-
-  function jsonResponse(data) {
-    return ContentService.createTextOutput(JSON.stringify(data))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  function errorResponse(msg) {
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: msg}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  ```
+  (See SettingsModal.tsx for the latest source)
 */
 
 // Mock Data for Demo Mode
@@ -163,22 +40,31 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
     try {
       // Append token to URL parameters
       const urlWithToken = `${config.gasDeploymentUrl}?token=${encodeURIComponent(config.apiToken)}&t=${new Date().getTime()}`;
+      
+      console.log(`[WesLedger] Fetching from: ${config.gasDeploymentUrl}`);
+      
       const response = await fetch(urlWithToken, { method: 'GET', redirect: 'follow' });
       
       if (!response.ok) throw new Error("Network response was not ok");
       
       const text = await response.text();
+      // Debug logging to see what the server actually sends back
+      console.log("[WesLedger] Raw Response:", text);
+
       let data;
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error("Invalid response from server.");
+        throw new Error("Invalid response from server. Check the console for Raw Response.");
       }
       
       if (data && data.status === "error") throw new Error(data.message);
       if (data && data.error) throw new Error(data.error);
       
-      return Array.isArray(data) ? data : [];
+      const entries = Array.isArray(data) ? data : [];
+      console.log(`[WesLedger] Parsed ${entries.length} entries.`);
+      return entries;
+
     } catch (error) {
       console.error("Fetch Error:", error);
       throw error;

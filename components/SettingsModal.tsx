@@ -13,7 +13,7 @@ const API_SECRET = "wes-ledger-secret"; // <--- CHANGE THIS to your own strong p
 // ---------------------
 
 function doGet(e) {
-  // 0. Handle Manual Execution (Play Button in Editor)
+  // 0. Handle Manual Execution
   if (!e || !e.parameter) {
     return ContentService.createTextOutput("System Online. Access this URL via your WesLedger App.");
   }
@@ -27,20 +27,34 @@ function doGet(e) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ledger');
   if (!sheet) return errorResponse("Sheet 'ledger' not found");
   
+  // 2. Fetch Data
   const data = sheet.getDataRange().getValues();
-  if (data.length < 1) return jsonResponse([]);
+  if (data.length < 2) return jsonResponse([]); // Only header or empty
 
   const headers = data.shift(); // Remove headers
   
-  // Schema: Date(0), Desc(1), Amount(2), Category(3), CreatedAt(4), ID(5)
-  const entries = data.map(row => ({
-    date: row[0],
-    description: row[1],
-    amount: row[2],
-    category: row[3],
-    createdAt: row[4],
-    id: row[5] || "" // Handle legacy rows without IDs
-  })).filter(e => e.date !== "");
+  // 3. Map & Normalize
+  // We explicitly convert Dates to Strings to avoid serialization issues
+  const entries = data.map(row => {
+    let dateVal = row[0];
+    if (Object.prototype.toString.call(dateVal) === '[object Date]') {
+      // Convert Google Sheet Date Object to YYYY-MM-DD
+      try {
+        dateVal = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      } catch(e) {
+        dateVal = new Date().toISOString().split('T')[0];
+      }
+    }
+    
+    return {
+      date: dateVal || "", 
+      description: row[1] || "",
+      amount: row[2] || 0,
+      category: row[3] || "Uncategorized",
+      createdAt: row[4] || "",
+      id: row[5] || "" 
+    };
+  }).filter(e => e.date !== "" && e.description !== ""); // Filter empty rows
 
   return jsonResponse(entries);
 }
@@ -53,11 +67,10 @@ function doPost(e) {
 
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000); // Prevent race conditions
+    lock.waitLock(10000); 
     
     const payload = JSON.parse(e.postData.contents);
     
-    // 1. Security Check
     if (payload.token !== API_SECRET) {
        return errorResponse("Unauthorized: Invalid Token");
     }
@@ -85,7 +98,6 @@ function doPost(e) {
     else if (action === 'update') {
       if (!entry.id) return errorResponse("ID required for update");
       const data = sheet.getDataRange().getValues();
-      // Skip header (row 0), so loop starts at 1
       for (let i = 1; i < data.length; i++) {
         if (data[i][5] == entry.id) {
           const range = sheet.getRange(i + 1, 1, 1, 4);
