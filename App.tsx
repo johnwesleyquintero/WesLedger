@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LedgerEntry, AppConfig } from './types';
 import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
@@ -13,6 +13,7 @@ import { useLedgerAnalytics } from './hooks/useLedgerAnalytics';
 import { useAppConfig } from './hooks/useAppConfig';
 import { useNotifications } from './hooks/useNotifications';
 import { generateAndDownloadCSV } from './utils/exportUtils';
+import { DEFAULT_CATEGORIES } from './constants';
 
 const App: React.FC = () => {
   // --- Infrastructure Hooks ---
@@ -44,6 +45,14 @@ const App: React.FC = () => {
     selectedCategory,
     selectedMonth
   });
+
+  // --- Dynamic Categories for Filter ---
+  // Combine defaults with any custom categories found in the entries
+  const availableCategories = useMemo(() => {
+    const customCategories = entries.map(e => e.category).filter(c => !DEFAULT_CATEGORIES.includes(c));
+    const uniqueCustom = Array.from(new Set(customCategories));
+    return [...DEFAULT_CATEGORIES, ...uniqueCustom];
+  }, [entries]);
 
   // --- Event Handlers ---
 
@@ -171,6 +180,7 @@ const App: React.FC = () => {
              setSelectedCategory={setSelectedCategory}
              selectedMonth={selectedMonth}
              setSelectedMonth={setSelectedMonth}
+             availableCategories={availableCategories}
            />
 
            <LedgerTable 

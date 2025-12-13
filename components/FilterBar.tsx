@@ -1,5 +1,4 @@
 import React from 'react';
-import { DEFAULT_CATEGORIES } from '../constants';
 
 interface FilterBarProps {
   searchQuery: string;
@@ -8,6 +7,7 @@ interface FilterBarProps {
   setSelectedCategory: (category: string) => void;
   selectedMonth: string;
   setSelectedMonth: (month: string) => void;
+  availableCategories: string[];
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({ 
@@ -16,7 +16,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedCategory, 
   setSelectedCategory,
   selectedMonth,
-  setSelectedMonth
+  setSelectedMonth,
+  availableCategories
 }) => {
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -82,7 +83,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onChange={(e) => setSelectedCategory(e.target.value)}
         >
           <option value="">All Categories</option>
-          {DEFAULT_CATEGORIES.map((category) => (
+          {availableCategories.map((category) => (
             <option key={category} value={category}>
               {category}
             </option>
