@@ -80,7 +80,15 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
     // LIVE MODE
     if (!config.gasDeploymentUrl) throw new Error("GAS URL not configured");
     try {
-      const response = await fetch(config.gasDeploymentUrl);
+      // CACHE BUSTER: We append a random timestamp to the URL to force the browser
+      // to make a real network request instead of loading from cache.
+      const urlWithCacheBuster = `${config.gasDeploymentUrl}?t=${new Date().getTime()}`;
+
+      const response = await fetch(urlWithCacheBuster, {
+        method: 'GET',
+        redirect: 'follow'
+      });
+      
       if (!response.ok) throw new Error("Network response was not ok");
       
       const text = await response.text();
