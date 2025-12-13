@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { LedgerEntry, AppConfig, Notification } from './types';
-import { INITIAL_CONFIG_KEY, DEFAULT_GAS_URL } from './constants';
+import React, { useState } from 'react';
+import { LedgerEntry, AppConfig } from './types';
 import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
 import { TransactionForm } from './components/TransactionForm';
@@ -11,46 +10,23 @@ import { Analytics } from './components/Analytics';
 import { Header } from './components/Header';
 import { useLedger } from './hooks/useLedger';
 import { useLedgerAnalytics } from './hooks/useLedgerAnalytics';
+import { useAppConfig } from './hooks/useAppConfig';
+import { useNotifications } from './hooks/useNotifications';
 import { generateAndDownloadCSV } from './utils/exportUtils';
 
 const App: React.FC = () => {
-  // --- Global UI State ---
+  // --- Infrastructure Hooks ---
+  const { config, setConfig } = useAppConfig();
+  const { notifications, showToast, removeNotification } = useNotifications();
+
+  // --- Local UI State ---
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
 
   // --- Filter State ---
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
-
-  // --- Config State ---
-  const [config, setConfig] = useState<AppConfig>(() => {
-    const saved = localStorage.getItem(INITIAL_CONFIG_KEY);
-    const defaultConfig: AppConfig = { 
-      mode: 'LIVE', 
-      gasDeploymentUrl: DEFAULT_GAS_URL, 
-      apiToken: '',
-      currency: 'USD',
-      locale: 'en-US'
-    };
-    if (saved) return { ...defaultConfig, ...JSON.parse(saved) };
-    return defaultConfig;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(INITIAL_CONFIG_KEY, JSON.stringify(config));
-  }, [config]);
-
-  // --- Notification System ---
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setNotifications(prev => [...prev, { id, message, type }]);
-  }, []);
-
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
 
   // --- Business Logic Hooks ---
   const { 
