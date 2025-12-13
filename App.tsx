@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LedgerEntry, AppConfig, MetricSummary, Notification } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LedgerEntry, AppConfig, Notification } from './types';
 import { INITIAL_CONFIG_KEY, DEFAULT_GAS_URL } from './constants';
 import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
@@ -8,7 +8,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { FilterBar } from './components/FilterBar';
 import { ToastContainer } from './components/Toast';
 import { Analytics } from './components/Analytics';
+import { Header } from './components/Header';
 import { useLedger } from './hooks/useLedger';
+import { useLedgerAnalytics } from './hooks/useLedgerAnalytics';
 import { generateAndDownloadCSV } from './utils/exportUtils';
 
 const App: React.FC = () => {
@@ -50,7 +52,7 @@ const App: React.FC = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  // --- Business Logic Hook ---
+  // --- Business Logic Hooks ---
   const { 
     entries, 
     isLoading, 
@@ -59,6 +61,13 @@ const App: React.FC = () => {
     removeTransaction, 
     bulkRemoveTransactions 
   } = useLedger(config, showToast);
+
+  const { filteredEntries, metrics } = useLedgerAnalytics({
+    entries,
+    searchQuery,
+    selectedCategory,
+    selectedMonth
+  });
 
   // --- Event Handlers ---
 
@@ -112,32 +121,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Derived Data ---
-
-  const filteredEntries = useMemo(() => {
-    return entries.filter(entry => {
-      const matchesSearch = entry.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory ? entry.category === selectedCategory : true;
-      let matchesMonth = true;
-      if (selectedMonth) {
-        matchesMonth = entry.date.startsWith(selectedMonth);
-      }
-      return matchesSearch && matchesCategory && matchesMonth;
-    });
-  }, [entries, searchQuery, selectedCategory, selectedMonth]);
-
-  const metrics: MetricSummary = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => {
-      const amount = Number(curr.amount);
-      return {
-        balance: acc.balance + amount,
-        income: amount > 0 ? acc.income + amount : acc.income,
-        expense: amount < 0 ? acc.expense + amount : acc.expense,
-        count: acc.count + 1
-      };
-    }, { balance: 0, income: 0, expense: 0, count: 0 });
-  }, [filteredEntries]);
-
   // --- Render ---
 
   return (
@@ -145,32 +128,7 @@ const App: React.FC = () => {
       
       <ToastContainer notifications={notifications} removeNotification={removeNotification} />
 
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-9 h-9 bg-slate-900 text-white flex items-center justify-center rounded-lg font-bold font-mono text-xl shadow-lg shadow-slate-900/20">
-               W
-             </div>
-             <div>
-               <h1 className="text-xl font-bold tracking-tight text-slate-900">WesLedger</h1>
-               <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-2">
-                  System v1.7
-                  <span className={`w-2 h-2 rounded-full ${config.mode === 'LIVE' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}></span>
-               </div>
-             </div>
-          </div>
-          
-          <button 
-            onClick={() => setShowSettings(true)}
-            className="text-slate-600 hover:text-slate-900 text-sm font-medium flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-50 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
-            </svg>
-            Config
-          </button>
-        </div>
-      </header>
+      <Header config={config} onOpenSettings={() => setShowSettings(true)} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
