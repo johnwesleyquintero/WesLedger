@@ -6,6 +6,7 @@ import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
 import { TransactionForm } from './components/TransactionForm';
 import { SettingsModal } from './components/SettingsModal';
+import { FilterBar } from './components/FilterBar';
 
 const App: React.FC = () => {
   // --- State ---
@@ -14,6 +15,10 @@ const App: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+
+  // Filter State
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   // Load Config from LocalStorage or Default
   const [config, setConfig] = useState<AppConfig>(() => {
@@ -66,17 +71,15 @@ const App: React.FC = () => {
   const handleSaveConfig = (newConfig: AppConfig) => {
     setConfig(newConfig);
     setShowSettings(false);
-    // Data will automatically reload due to dependency on config in loadData's parent effect/callback structure if strictly followed, 
-    // but useEffect([config]) handles it.
   };
 
   const handleExportCSV = () => {
-    if (entries.length === 0) return;
+    if (filteredEntries.length === 0) return;
 
     const headers = ['Date', 'Description', 'Category', 'Amount', 'Created At'];
     const csvContent = [
       headers.join(','),
-      ...entries.map(row => {
+      ...filteredEntries.map(row => {
         const escape = (val: string | number | undefined) => {
           if (val === undefined || val === null) return '""';
           return `"${String(val).replace(/"/g, '""')}"`;
@@ -103,8 +106,16 @@ const App: React.FC = () => {
 
   // --- Derived State ---
 
+  const filteredEntries = useMemo(() => {
+    return entries.filter(entry => {
+      const matchesSearch = entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory ? entry.category === selectedCategory : true;
+      return matchesSearch && matchesCategory;
+    });
+  }, [entries, searchQuery, selectedCategory]);
+
   const metrics: MetricSummary = useMemo(() => {
-    return entries.reduce((acc, curr) => {
+    return filteredEntries.reduce((acc, curr) => {
       const amount = Number(curr.amount);
       return {
         balance: acc.balance + amount,
@@ -113,7 +124,7 @@ const App: React.FC = () => {
         count: acc.count + 1
       };
     }, { balance: 0, income: 0, expense: 0, count: 0 });
-  }, [entries]);
+  }, [filteredEntries]);
 
   // --- Render ---
 
@@ -130,7 +141,7 @@ const App: React.FC = () => {
              <div>
                <h1 className="text-lg font-bold tracking-tight">WesLedger</h1>
                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-2">
-                  System v1.0
+                  System v1.1
                   <span className={`w-2 h-2 rounded-full ${config.mode === 'LIVE' ? 'bg-green-500' : 'bg-orange-400'}`}></span>
                </div>
              </div>
@@ -165,13 +176,13 @@ const App: React.FC = () => {
         {/* Input Form */}
         <TransactionForm onSubmit={handleAddEntry} isSubmitting={isSubmitting} />
 
-        {/* Ledger Table */}
+        {/* Filters */}
         <div className="mt-8">
-           <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
              <h2 className="text-lg font-bold text-slate-800">Ledger Entries</h2>
              
              <div className="flex items-center gap-4">
-               {entries.length > 0 && (
+               {filteredEntries.length > 0 && (
                  <button 
                    onClick={handleExportCSV}
                    className="text-sm font-medium text-slate-500 hover:text-slate-900 flex items-center gap-2 transition-colors"
@@ -180,15 +191,23 @@ const App: React.FC = () => {
                      <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                      <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
                    </svg>
-                   Export CSV
+                   Export View
                  </button>
                )}
                <span className="text-xs text-slate-400 font-mono">
-                 {entries.length} RECORDS
+                 {filteredEntries.length} RECORDS
                </span>
              </div>
            </div>
-           <LedgerTable entries={entries} isLoading={isLoading} />
+           
+           <FilterBar 
+             searchQuery={searchQuery}
+             setSearchQuery={setSearchQuery}
+             selectedCategory={selectedCategory}
+             setSelectedCategory={setSelectedCategory}
+           />
+
+           <LedgerTable entries={filteredEntries} isLoading={isLoading} />
         </div>
 
       </main>
