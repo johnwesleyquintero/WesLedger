@@ -8,6 +8,7 @@ import { TransactionForm } from './components/TransactionForm';
 import { SettingsModal } from './components/SettingsModal';
 import { FilterBar } from './components/FilterBar';
 import { ToastContainer } from './components/Toast';
+import { Analytics } from './components/Analytics';
 
 const App: React.FC = () => {
   // --- State ---
@@ -202,7 +203,7 @@ const App: React.FC = () => {
              <div>
                <h1 className="text-xl font-bold tracking-tight text-slate-900">WesLedger</h1>
                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-2">
-                  System v1.6
+                  System v1.7
                   <span className={`w-2 h-2 rounded-full ${config.mode === 'LIVE' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}></span>
                </div>
              </div>
@@ -225,6 +226,9 @@ const App: React.FC = () => {
         
         {/* Financial Summary */}
         <SummaryCards metrics={metrics} />
+        
+        {/* Analytics Visualization (v1.7) */}
+        <Analytics entries={filteredEntries} />
 
         {/* Input Form */}
         <TransactionForm 
