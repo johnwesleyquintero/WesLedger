@@ -26,3 +26,9 @@ export interface MetricSummary {
   expense: number;
   count: number;
 }
+
+export interface Notification {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}

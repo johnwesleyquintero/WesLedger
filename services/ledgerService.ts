@@ -6,12 +6,22 @@ import { LOCAL_STORAGE_KEY } from '../constants';
   (See SettingsModal.tsx for the latest source)
 */
 
-// Mock Data for Demo Mode
-let MOCK_DATA: LedgerEntry[] = [
-  { id: '1', date: '2023-10-25', description: 'Stripe Payout', amount: 4500.00, category: 'Income', createdAt: new Date().toISOString() },
-  { id: '2', date: '2023-10-26', description: 'Vercel Subscription', amount: -20.00, category: 'Software/SaaS', createdAt: new Date().toISOString() },
-  { id: '3', date: '2023-10-27', description: 'Supabase Compute', amount: -25.00, category: 'Software/SaaS', createdAt: new Date().toISOString() },
-];
+// Dynamic Mock Data generator
+const getMockData = (): LedgerEntry[] => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+  return [
+    { id: '1', date: fmt(twoDaysAgo), description: 'Stripe Payout', amount: 4500.00, category: 'Income', createdAt: new Date().toISOString() },
+    { id: '2', date: fmt(yesterday), description: 'Vercel Subscription', amount: -20.00, category: 'Software/SaaS', createdAt: new Date().toISOString() },
+    { id: '3', date: fmt(today), description: 'Supabase Compute', amount: -25.00, category: 'Software/SaaS', createdAt: new Date().toISOString() },
+  ];
+};
 
 // Helper to send POST requests
 const postToGas = async (url: string, payload: any) => {
@@ -28,8 +38,9 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
     await new Promise(resolve => setTimeout(resolve, 500));
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(MOCK_DATA));
-      return MOCK_DATA;
+      const initialData = getMockData();
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialData));
+      return initialData;
     }
     return JSON.parse(stored);
   } else {
