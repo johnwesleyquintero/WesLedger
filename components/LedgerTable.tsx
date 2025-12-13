@@ -33,35 +33,43 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({ entries, isLoading, on
       <table className="min-w-full text-sm text-left">
         <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
           <tr>
-            <th className="px-6 py-3 w-32">Date</th>
-            <th className="px-6 py-3">Description</th>
-            <th className="px-6 py-3 w-48">Category</th>
-            <th className="px-6 py-3 w-32 text-right">Amount</th>
-            <th className="px-6 py-3 w-20 text-right">Actions</th>
+            <th className="px-4 sm:px-6 py-3 w-24 sm:w-32 whitespace-nowrap">Date</th>
+            <th className="px-4 sm:px-6 py-3 min-w-[140px]">Description</th>
+            <th className="hidden sm:table-cell px-6 py-3 w-48">Category</th>
+            <th className="px-4 sm:px-6 py-3 w-28 sm:w-32 text-right">Amount</th>
+            <th className="px-4 sm:px-6 py-3 w-20 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {entries.map((entry, idx) => (
             <tr key={entry.id || `row-${idx}`} className="group hover:bg-slate-50 transition-colors">
-              <td className="px-6 py-3 font-mono text-slate-600 whitespace-nowrap">
-                {formatDate(entry.date)}
+              <td className="px-4 sm:px-6 py-3 font-mono text-slate-600 whitespace-nowrap text-xs sm:text-sm">
+                <span className="hidden sm:inline">{formatDate(entry.date)}</span>
+                <span className="sm:hidden">{entry.date.slice(5)}</span> {/* MM-DD on mobile */}
               </td>
-              <td className="px-6 py-3 text-slate-900 font-medium">
-                {entry.description}
+              <td className="px-4 sm:px-6 py-3 text-slate-900 font-medium align-top sm:align-middle">
+                <div className="line-clamp-2">{entry.description}</div>
+                {/* Mobile-only category pill under description */}
+                <div className="sm:hidden mt-1">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    {entry.category}
+                  </span>
+                </div>
               </td>
-              <td className="px-6 py-3 text-slate-500">
+              <td className="hidden sm:table-cell px-6 py-3 text-slate-500">
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                   {entry.category}
                 </span>
               </td>
-              <td className={`px-6 py-3 text-right font-mono font-bold tabular-nums ${entry.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+              <td className={`px-4 sm:px-6 py-3 text-right font-mono font-bold tabular-nums whitespace-nowrap ${entry.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                 {formatCurrency(entry.amount, currency, locale)}
               </td>
-              <td className="px-6 py-3 text-right">
-                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <td className="px-4 sm:px-6 py-3 text-right">
+                {/* Opacity 100 on mobile, fade effect on desktop */}
+                <div className="flex items-center justify-end gap-3 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => onEdit(entry)}
-                    className="text-slate-400 hover:text-indigo-600 p-1"
+                    className="text-slate-400 hover:text-indigo-600 p-1.5 sm:p-1 rounded-full hover:bg-slate-100"
                     title="Edit"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -70,7 +78,7 @@ export const LedgerTable: React.FC<LedgerTableProps> = ({ entries, isLoading, on
                   </button>
                   <button 
                     onClick={() => onDelete(entry)}
-                    className="text-slate-400 hover:text-red-600 p-1"
+                    className="text-slate-400 hover:text-red-600 p-1.5 sm:p-1 rounded-full hover:bg-slate-100"
                     title="Delete"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
