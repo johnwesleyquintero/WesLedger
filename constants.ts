@@ -11,9 +11,9 @@ export const DEFAULT_CATEGORIES = [
   "Uncategorized"
 ];
 
-export const INITIAL_CONFIG_KEY = 'wesledger_config_v1.3';
+export const INITIAL_CONFIG_KEY = 'wesledger_config_v1.5';
 export const LOCAL_STORAGE_KEY = 'wesledger_data_v1';
-export const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzVjOP7Z1rp2RI1GWnQF1_iraY_BFms5BY55TJM6pfzG4O1OQgKzqrQkUPM6PQ4nW_s/exec';
+export const DEFAULT_GAS_URL = '';
 
 // Formatter for currency
 export const formatCurrency = (amount: number): string => {

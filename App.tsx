@@ -26,7 +26,7 @@ const App: React.FC = () => {
   // Load Config
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem(INITIAL_CONFIG_KEY);
-    return saved ? JSON.parse(saved) : { mode: 'LIVE', gasDeploymentUrl: DEFAULT_GAS_URL };
+    return saved ? JSON.parse(saved) : { mode: 'LIVE', gasDeploymentUrl: DEFAULT_GAS_URL, apiToken: '' };
   });
 
   // --- Effects ---
@@ -174,8 +174,9 @@ const App: React.FC = () => {
              <div>
                <h1 className="text-lg font-bold tracking-tight">WesLedger</h1>
                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-2">
-                  System v1.4
+                  System v1.5
                   <span className={`w-2 h-2 rounded-full ${config.mode === 'LIVE' ? 'bg-green-500' : 'bg-orange-400'}`}></span>
+                  {config.apiToken && config.mode === 'LIVE' && <span className="ml-1 text-[8px] border border-slate-300 px-1 rounded text-slate-400">SECURE</span>}
                </div>
              </div>
           </div>

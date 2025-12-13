@@ -17,6 +17,7 @@ export interface LedgerState {
 export interface AppConfig {
   mode: 'DEMO' | 'LIVE';
   gasDeploymentUrl: string;
+  apiToken: string; // The Shared Secret
 }
 
 export interface MetricSummary {

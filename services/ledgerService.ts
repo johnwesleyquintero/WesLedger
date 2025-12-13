@@ -2,13 +2,25 @@ import { LedgerEntry, AppConfig } from '../types';
 import { LOCAL_STORAGE_KEY } from '../constants';
 
 /* 
-  === GOOGLE APPS SCRIPT BACKEND CODE (v2 - Full CRUD) ===
+  === GOOGLE APPS SCRIPT BACKEND CODE (v3 - Secure) ===
   
   Replace your entire Code.gs with this.
+  
+  CRITICAL: Change the API_SECRET variable below to your own password.
   Don't forget to deploy as 'New Version'.
 
   ```javascript
+  // --- CONFIGURATION ---
+  const API_SECRET = "wes-ledger-secret"; // <--- CHANGE THIS to your own strong password
+  // ---------------------
+
   function doGet(e) {
+    // 1. Security Check
+    const token = e.parameter.token;
+    if (token !== API_SECRET) {
+      return errorResponse("Unauthorized: Invalid Token");
+    }
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ledger');
     if (!sheet) return errorResponse("Sheet 'ledger' not found");
     
@@ -34,16 +46,21 @@ import { LOCAL_STORAGE_KEY } from '../constants';
     const lock = LockService.getScriptLock();
     try {
       lock.waitLock(10000); // Prevent race conditions
+      
+      const payload = JSON.parse(e.postData.contents);
+      
+      // 1. Security Check
+      if (payload.token !== API_SECRET) {
+         return errorResponse("Unauthorized: Invalid Token");
+      }
+
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ledger');
       if (!sheet) return errorResponse("Sheet 'ledger' not found");
       
-      const payload = JSON.parse(e.postData.contents);
       const action = payload.action || 'create';
       const entry = payload.entry;
 
       if (action === 'create') {
-        // Append new row
-        // If ID is missing from client, we generate one (fallback)
         const id = entry.id || Utilities.getUuid();
         const newRow = [
           entry.date,
@@ -60,13 +77,9 @@ import { LOCAL_STORAGE_KEY } from '../constants';
       else if (action === 'update') {
         if (!entry.id) return errorResponse("ID required for update");
         const data = sheet.getDataRange().getValues();
-        // Find row index (data includes header, so +1 logic applies carefully)
-        // We skip header (row 0), so loop starts at 1
+        // Skip header (row 0), so loop starts at 1
         for (let i = 1; i < data.length; i++) {
-          // Column 6 (index 5) is ID
           if (data[i][5] == entry.id) {
-            // Update Date(1), Desc(2), Amount(3), Category(4). Apps Script is 1-based for ranges.
-            // Row is i+1.
             const range = sheet.getRange(i + 1, 1, 1, 4);
             range.setValues([[entry.date, entry.description, entry.amount, entry.category]]);
             return jsonResponse({ status: "updated" });
@@ -135,9 +148,12 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
   } else {
     // LIVE MODE
     if (!config.gasDeploymentUrl) throw new Error("GAS URL not configured");
+    if (!config.apiToken) throw new Error("API Token required");
+
     try {
-      const urlWithCacheBuster = `${config.gasDeploymentUrl}?t=${new Date().getTime()}`;
-      const response = await fetch(urlWithCacheBuster, { method: 'GET', redirect: 'follow' });
+      // Append token to URL parameters
+      const urlWithToken = `${config.gasDeploymentUrl}?token=${encodeURIComponent(config.apiToken)}&t=${new Date().getTime()}`;
+      const response = await fetch(urlWithToken, { method: 'GET', redirect: 'follow' });
       
       if (!response.ok) throw new Error("Network response was not ok");
       
@@ -149,6 +165,7 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
         throw new Error("Invalid response from server.");
       }
       
+      if (data && data.status === "error") throw new Error(data.message);
       if (data && data.error) throw new Error(data.error);
       
       return Array.isArray(data) ? data : [];
@@ -160,7 +177,6 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
 };
 
 export const addEntry = async (entry: LedgerEntry, config: AppConfig): Promise<void> => {
-  // Ensure ID exists
   const entryWithId = { ...entry, id: entry.id || crypto.randomUUID() };
 
   if (config.mode === 'DEMO') {
@@ -171,7 +187,12 @@ export const addEntry = async (entry: LedgerEntry, config: AppConfig): Promise<v
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([newEntry, ...current]));
   } else {
     if (!config.gasDeploymentUrl) throw new Error("GAS URL not configured");
-    await postToGas(config.gasDeploymentUrl, { action: 'create', entry: entryWithId });
+    // Send token in body
+    await postToGas(config.gasDeploymentUrl, { 
+      action: 'create', 
+      entry: entryWithId,
+      token: config.apiToken 
+    });
   }
 };
 
@@ -184,7 +205,11 @@ export const updateEntry = async (entry: LedgerEntry, config: AppConfig): Promis
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(current));
   } else {
     if (!config.gasDeploymentUrl) throw new Error("GAS URL not configured");
-    await postToGas(config.gasDeploymentUrl, { action: 'update', entry });
+    await postToGas(config.gasDeploymentUrl, { 
+      action: 'update', 
+      entry,
+      token: config.apiToken 
+    });
   }
 };
 
@@ -197,7 +222,10 @@ export const deleteEntry = async (id: string, config: AppConfig): Promise<void> 
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(current));
   } else {
     if (!config.gasDeploymentUrl) throw new Error("GAS URL not configured");
-    // For delete, we just need the ID in the entry object
-    await postToGas(config.gasDeploymentUrl, { action: 'delete', entry: { id } });
+    await postToGas(config.gasDeploymentUrl, { 
+      action: 'delete', 
+      entry: { id },
+      token: config.apiToken 
+    });
   }
 };
