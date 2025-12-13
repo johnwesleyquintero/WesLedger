@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LedgerEntry, AppConfig, MetricSummary } from './types';
-import { fetchEntries, addEntry } from './services/ledgerService';
+import { fetchEntries, addEntry, updateEntry, deleteEntry } from './services/ledgerService';
 import { INITIAL_CONFIG_KEY, DEFAULT_GAS_URL } from './constants';
 import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
@@ -15,12 +15,15 @@ const App: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  
+  // Editing State
+  const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
 
   // Filter State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
-  // Load Config from LocalStorage or Default
+  // Load Config
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem(INITIAL_CONFIG_KEY);
     return saved ? JSON.parse(saved) : { mode: 'LIVE', gasDeploymentUrl: DEFAULT_GAS_URL };
@@ -28,7 +31,6 @@ const App: React.FC = () => {
 
   // --- Effects ---
 
-  // Persist config changes
   useEffect(() => {
     localStorage.setItem(INITIAL_CONFIG_KEY, JSON.stringify(config));
   }, [config]);
@@ -39,7 +41,7 @@ const App: React.FC = () => {
     setError(null);
     try {
       const data = await fetchEntries(config);
-      // Sort by date desc (newest first)
+      // Sort by date desc
       const sorted = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setEntries(sorted);
     } catch (err: any) {
@@ -49,22 +51,56 @@ const App: React.FC = () => {
     }
   }, [config]);
 
-  // Initial Load
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   // --- Handlers ---
 
-  const handleAddEntry = async (entry: LedgerEntry) => {
+  const handleFormSubmit = async (entry: LedgerEntry) => {
     setIsSubmitting(true);
     try {
-      await addEntry(entry, config);
-      await loadData(); // Refresh list to get server-side timestamp if applicable, or just sync
+      if (editingEntry) {
+        // UPDATE MODE
+        await updateEntry(entry, config);
+        setEditingEntry(null); // Clear edit mode
+      } else {
+        // CREATE MODE
+        await addEntry(entry, config);
+      }
+      // Refresh data
+      await loadData();
     } catch (err: any) {
-      alert(`Error adding transaction: ${err.message}`);
+      alert(`Error saving transaction: ${err.message}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (entry: LedgerEntry) => {
+    if (!entry.id) {
+      alert("This legacy entry cannot be edited because it lacks an ID. Please add an ID in the spreadsheet manually to enable editing.");
+      return;
+    }
+    setEditingEntry(entry);
+    // Scroll to top to see form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteClick = async (entry: LedgerEntry) => {
+    if (!entry.id) {
+      alert("This legacy entry cannot be deleted because it lacks an ID.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete "${entry.description}"?`)) return;
+
+    setIsLoading(true); // Show loading state on table
+    try {
+      await deleteEntry(entry.id, config);
+      await loadData();
+    } catch (err: any) {
+      alert(`Error deleting transaction: ${err.message}`);
+      setIsLoading(false);
     }
   };
 
@@ -75,20 +111,17 @@ const App: React.FC = () => {
 
   const handleExportCSV = () => {
     if (filteredEntries.length === 0) return;
-
-    const headers = ['Date', 'Description', 'Category', 'Amount', 'Created At'];
+    const headers = ['ID', 'Date', 'Description', 'Category', 'Amount', 'Created At'];
     const csvContent = [
       headers.join(','),
       ...filteredEntries.map(row => {
-        const escape = (val: string | number | undefined) => {
-          if (val === undefined || val === null) return '""';
-          return `"${String(val).replace(/"/g, '""')}"`;
-        };
+        const escape = (val: string | number | undefined) => `"${String(val ?? '').replace(/"/g, '""')}"`;
         return [
+          escape(row.id),
           escape(row.date),
           escape(row.description),
           escape(row.category),
-          row.amount, // Keep number unescaped for spreadsheet math
+          row.amount,
           escape(row.createdAt)
         ].join(',');
       })
@@ -141,7 +174,7 @@ const App: React.FC = () => {
              <div>
                <h1 className="text-lg font-bold tracking-tight">WesLedger</h1>
                <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold flex items-center gap-2">
-                  System v1.1
+                  System v1.4
                   <span className={`w-2 h-2 rounded-full ${config.mode === 'LIVE' ? 'bg-green-500' : 'bg-orange-400'}`}></span>
                </div>
              </div>
@@ -174,7 +207,12 @@ const App: React.FC = () => {
         <SummaryCards metrics={metrics} />
 
         {/* Input Form */}
-        <TransactionForm onSubmit={handleAddEntry} isSubmitting={isSubmitting} />
+        <TransactionForm 
+          onSubmit={handleFormSubmit} 
+          isSubmitting={isSubmitting} 
+          initialData={editingEntry}
+          onCancelEdit={() => setEditingEntry(null)}
+        />
 
         {/* Filters */}
         <div className="mt-8">
@@ -207,7 +245,12 @@ const App: React.FC = () => {
              setSelectedCategory={setSelectedCategory}
            />
 
-           <LedgerTable entries={filteredEntries} isLoading={isLoading} />
+           <LedgerTable 
+             entries={filteredEntries} 
+             isLoading={isLoading} 
+             onEdit={handleEditClick}
+             onDelete={handleDeleteClick}
+           />
         </div>
 
       </main>

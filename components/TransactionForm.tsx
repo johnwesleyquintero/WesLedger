@@ -1,48 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LedgerEntry } from '../types';
 import { DEFAULT_CATEGORIES } from '../constants';
 
 interface TransactionFormProps {
   onSubmit: (entry: LedgerEntry) => Promise<void>;
   isSubmitting: boolean;
+  initialData?: LedgerEntry | null; // If present, we are in Edit Mode
+  onCancelEdit?: () => void;
 }
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, isSubmitting }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ 
+  onSubmit, 
+  isSubmitting, 
+  initialData, 
+  onCancelEdit 
+}) => {
+  
   const [formData, setFormData] = useState<LedgerEntry>({
+    id: '',
     date: new Date().toISOString().split('T')[0],
     description: '',
     amount: 0,
     category: DEFAULT_CATEGORIES[0],
   });
   
-  // Local state to handle string input for amount before parsing
   const [amountStr, setAmountStr] = useState<string>('');
+
+  // Populate form if initialData changes (Edit Mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+      setAmountStr(initialData.amount.toString());
+    } else {
+      // Reset to default
+      setFormData({
+        id: '',
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: 0,
+        category: DEFAULT_CATEGORIES[0],
+      });
+      setAmountStr('');
+    }
+  }, [initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !amountStr) return;
 
-    // Convert amount to number. If expense (determined by toggle or sign), handle logic?
-    // Spec says positive = income, negative = expense. 
-    // Let's trust the user to type '-' or provide a simple toggle.
-    // Ideally, operator-grade means manual control. Typing "-20" is faster than clicking a toggle.
-    
     const val = parseFloat(amountStr);
     
+    // For creating new entries, we don't have an ID yet, 
+    // but the service layer will handle generating it if missing.
+    // If editing, formData.id will be present.
     await onSubmit({ ...formData, amount: val });
     
-    // Reset form
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      description: '',
-      amount: 0,
-      category: DEFAULT_CATEGORIES[0],
-    });
-    setAmountStr('');
+    // Form reset happens in parent or via useEffect when initialData is cleared
+    if (!initialData) {
+      setFormData({
+        id: '',
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: 0,
+        category: DEFAULT_CATEGORIES[0],
+      });
+      setAmountStr('');
+    }
   };
 
+  const isEditing = !!initialData;
+
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 p-4 rounded shadow-sm mb-6">
+    <form onSubmit={handleSubmit} className={`border p-4 rounded shadow-sm mb-6 transition-colors ${isEditing ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+      
+      {isEditing && (
+        <div className="mb-2 text-xs font-bold text-amber-700 uppercase tracking-wide flex justify-between items-center">
+          <span>Editing Transaction</span>
+          <button type="button" onClick={onCancelEdit} className="text-amber-600 hover:text-amber-900 underline">Cancel</button>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-4 items-end">
         
         <div className="flex-1 w-full">
@@ -97,9 +134,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, isSu
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full md:w-auto bg-slate-900 text-white font-medium px-6 py-2 rounded text-sm hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          className={`w-full md:w-auto text-white font-medium px-6 py-2 rounded text-sm disabled:opacity-50 transition-colors ${isEditing ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-900 hover:bg-slate-700'}`}
         >
-          {isSubmitting ? '...' : 'Add'}
+          {isSubmitting ? '...' : isEditing ? 'Update' : 'Add'}
         </button>
       </div>
     </form>

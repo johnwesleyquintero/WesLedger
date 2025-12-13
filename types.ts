@@ -1,4 +1,5 @@
 export interface LedgerEntry {
+  id: string;         // UUID for row identification
   date: string;       // YYYY-MM-DD
   description: string;
   amount: number;     // Positive = Income, Negative = Expense
