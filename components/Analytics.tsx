@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { LedgerEntry } from '../types';
 import { formatCurrency } from '../constants';
+import { calculateDailyTrend, calculateTopExpenses, generateSVGPoints, generateAreaPath } from '../utils/analyticsUtils';
 
 interface AnalyticsProps {
   entries: LedgerEntry[];
@@ -10,76 +11,17 @@ interface AnalyticsProps {
 
 export const Analytics: React.FC<AnalyticsProps> = ({ entries, currency, locale }) => {
   
-  // 1. Prepare Data for Chart (Daily Balance)
-  const chartData = useMemo(() => {
-    if (entries.length === 0) return [];
-    
-    // Sort asc by date
-    const sorted = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    const dailyMap = new Map<string, number>();
-    let runningBalance = 0;
+  // 1. Data Prep
+  const chartData = useMemo(() => calculateDailyTrend(entries), [entries]);
+  const categoryData = useMemo(() => calculateTopExpenses(entries), [entries]);
 
-    // We need to accumulate *all* previous history to get true balance, 
-    // but for the visual "Trend", we'll just plot the movement within the current view
-    // or we simulate a starting point. For simplicity in this view, we plot "Cash Flow Impact" 
-    // or just the running total of the visible entries.
-    
-    sorted.forEach(e => {
-      runningBalance += Number(e.amount);
-      dailyMap.set(e.date, runningBalance);
-    });
-
-    return Array.from(dailyMap.entries()).map(([date, val]) => ({ date, val }));
-  }, [entries]);
-
-  // 2. Prepare Data for Categories
-  const categoryData = useMemo(() => {
-    const map = new Map<string, number>();
-    let totalExp = 0;
-    entries.forEach(e => {
-        const amt = Number(e.amount);
-        if (amt < 0) {
-            const cat = e.category || 'Uncategorized';
-            const val = Math.abs(amt);
-            map.set(cat, (map.get(cat) || 0) + val);
-            totalExp += val;
-        }
-    });
-    
-    return Array.from(map.entries())
-        .map(([cat, val]) => ({ cat, val, pct: totalExp ? (val / totalExp) * 100 : 0 }))
-        .sort((a, b) => b.val - a.val)
-        .slice(0, 5); // Top 5
-  }, [entries]);
-
-  // --- SVG Chart Logic ---
+  // 2. SVG Geometry
   const width = 600;
   const height = 150;
   const padding = 20;
 
-  const points = useMemo(() => {
-      if (chartData.length < 2) return "";
-      
-      const maxVal = Math.max(...chartData.map(d => d.val));
-      const minVal = Math.min(...chartData.map(d => d.val));
-      const range = maxVal - minVal || 1;
-      
-      return chartData.map((d, i) => {
-          const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
-          // Invert Y because SVG 0 is top
-          const y = height - padding - ((d.val - minVal) / range) * (height - padding * 2);
-          return `${x},${y}`;
-      }).join(' ');
-  }, [chartData]);
-  
-  // Area fill path
-  const areaPath = useMemo(() => {
-      if (!points) return "";
-      const firstX = padding;
-      const lastX = width - padding;
-      return `${points} L ${lastX},${height} L ${firstX},${height} Z`;
-  }, [points]);
+  const points = useMemo(() => generateSVGPoints(chartData, width, height, padding), [chartData]);
+  const areaPath = useMemo(() => generateAreaPath(points, width, height, padding), [points]);
 
   if (entries.length < 2) return null;
 
@@ -95,7 +37,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ entries, currency, locale 
          
          <div className="relative w-full h-[150px] overflow-hidden">
              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible preserve-3d">
-                 {/* Gradient Definition */}
                  <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#10b981" stopOpacity="0.2"/>
@@ -103,10 +44,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ entries, currency, locale 
                     </linearGradient>
                  </defs>
                  
-                 {/* Area Fill */}
                  <path d={areaPath} fill="url(#chartGradient)" />
                  
-                 {/* Stroke Line */}
                  <polyline 
                     fill="none" 
                     stroke="#10b981" 

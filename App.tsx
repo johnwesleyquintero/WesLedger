@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LedgerEntry, AppConfig, MetricSummary, Notification } from './types';
-import { fetchEntries, addEntry, updateEntry, deleteEntry } from './services/ledgerService';
 import { INITIAL_CONFIG_KEY, DEFAULT_GAS_URL } from './constants';
 import { SummaryCards } from './components/SummaryCards';
 import { LedgerTable } from './components/LedgerTable';
@@ -9,24 +8,21 @@ import { SettingsModal } from './components/SettingsModal';
 import { FilterBar } from './components/FilterBar';
 import { ToastContainer } from './components/Toast';
 import { Analytics } from './components/Analytics';
+import { useLedger } from './hooks/useLedger';
+import { generateAndDownloadCSV } from './utils/exportUtils';
 
 const App: React.FC = () => {
-  // --- State ---
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  // --- Global UI State ---
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  
-  // Editing State
   const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
 
-  // Filter State
+  // --- Filter State ---
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7)); // Default to current YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
 
-  // Load Config
+  // --- Config State ---
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem(INITIAL_CONFIG_KEY);
     const defaultConfig: AppConfig = { 
@@ -36,21 +32,15 @@ const App: React.FC = () => {
       currency: 'USD',
       locale: 'en-US'
     };
-    
-    if (saved) {
-      // Merge saved config with defaults to ensure new fields (currency/locale) exist
-      return { ...defaultConfig, ...JSON.parse(saved) };
-    }
+    if (saved) return { ...defaultConfig, ...JSON.parse(saved) };
     return defaultConfig;
   });
-
-  // --- Effects ---
 
   useEffect(() => {
     localStorage.setItem(INITIAL_CONFIG_KEY, JSON.stringify(config));
   }, [config]);
 
-  // Toast Helper
+  // --- Notification System ---
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     setNotifications(prev => [...prev, { id, message, type }]);
@@ -60,46 +50,22 @@ const App: React.FC = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  // Fetch Data
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchEntries(config);
-      // Sort by date desc
-      const sorted = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setEntries(sorted);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to load ledger data.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [config, showToast]);
+  // --- Business Logic Hook ---
+  const { 
+    entries, 
+    isLoading, 
+    isSubmitting, 
+    saveTransaction, 
+    removeTransaction, 
+    bulkRemoveTransactions 
+  } = useLedger(config, showToast);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // --- Handlers ---
+  // --- Event Handlers ---
 
   const handleFormSubmit = async (entry: LedgerEntry) => {
-    setIsSubmitting(true);
-    try {
-      if (editingEntry) {
-        // UPDATE MODE
-        await updateEntry(entry, config);
-        showToast('Transaction updated successfully', 'success');
-        setEditingEntry(null); // Clear edit mode
-      } else {
-        // CREATE MODE
-        await addEntry(entry, config);
-        showToast('Transaction added successfully', 'success');
-      }
-      // Refresh data
-      await loadData();
-    } catch (err: any) {
-      showToast(`Error saving transaction: ${err.message}`, 'error');
-    } finally {
-      setIsSubmitting(false);
+    const success = await saveTransaction(entry, !!editingEntry);
+    if (success && editingEntry) {
+      setEditingEntry(null);
     }
   };
 
@@ -109,25 +75,12 @@ const App: React.FC = () => {
       return;
     }
     setEditingEntry(entry);
-    // Scroll to top to see form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = async (entry: LedgerEntry) => {
-    if (!entry.id) {
-      showToast("Legacy entry lacks ID. Cannot delete.", 'error');
-      return;
-    }
-    if (!window.confirm(`Are you sure you want to delete "${entry.description}"?`)) return;
-
-    setIsLoading(true); // Show loading state on table
-    try {
-      await deleteEntry(entry.id, config);
-      showToast('Transaction deleted', 'info');
-      await loadData();
-    } catch (err: any) {
-      showToast(`Error deleting transaction: ${err.message}`, 'error');
-      setIsLoading(false);
+    if (window.confirm(`Are you sure you want to delete "${entry.description}"?`)) {
+      await removeTransaction(entry);
     }
   };
 
@@ -135,31 +88,12 @@ const App: React.FC = () => {
     const count = filteredEntries.length;
     if (count === 0) return;
 
-    // Strict Confirmation Dialog
     const confirmed = window.confirm(
       `⚠️ CRITICAL WARNING ⚠️\n\nYou are about to PERMANENTLY DELETE ${count} entries from your ledger.\n\nThis applies to the currently filtered view (Search: "${searchQuery}", Category: "${selectedCategory}", Month: "${selectedMonth}").\nThis action CANNOT be undone.\n\nAre you sure you want to proceed?`
     );
 
-    if (!confirmed) return;
-
-    setIsLoading(true);
-    try {
-      // Process sequentially to be gentle on GAS quotas and ensure reliability
-      let deletedCount = 0;
-      for (const entry of filteredEntries) {
-        if (entry.id) {
-          await deleteEntry(entry.id, config);
-          deletedCount++;
-        }
-      }
-      showToast(`Successfully deleted ${deletedCount} entries`, 'success');
-      await loadData();
-    } catch (err: any) {
-      showToast(`Error during bulk delete: ${err.message}`, 'error');
-      // Refresh to show what remains
-      await loadData(); 
-    } finally {
-      setIsLoading(false);
+    if (confirmed) {
+      await bulkRemoveTransactions(filteredEntries);
     }
   };
 
@@ -170,50 +104,24 @@ const App: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    if (filteredEntries.length === 0) {
+    const success = generateAndDownloadCSV(filteredEntries);
+    if (success) {
+      showToast('Export generated', 'success');
+    } else {
       showToast('No data to export', 'info');
-      return;
     }
-    const headers = ['ID', 'Date', 'Description', 'Category', 'Amount', 'Created At'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredEntries.map(row => {
-        const escape = (val: string | number | undefined) => `"${String(val ?? '').replace(/"/g, '""')}"`;
-        return [
-          escape(row.id),
-          escape(row.date),
-          escape(row.description),
-          escape(row.category),
-          row.amount,
-          escape(row.createdAt)
-        ].join(',');
-      })
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `wesledger_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('Export generated', 'success');
   };
 
-  // --- Derived State ---
+  // --- Derived Data ---
 
   const filteredEntries = useMemo(() => {
     return entries.filter(entry => {
       const matchesSearch = entry.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory ? entry.category === selectedCategory : true;
-      
       let matchesMonth = true;
       if (selectedMonth) {
-        // entry.date is YYYY-MM-DD. selectedMonth is YYYY-MM
         matchesMonth = entry.date.startsWith(selectedMonth);
       }
-
       return matchesSearch && matchesCategory && matchesMonth;
     });
   }, [entries, searchQuery, selectedCategory, selectedMonth]);
@@ -237,7 +145,6 @@ const App: React.FC = () => {
       
       <ToastContainer notifications={notifications} removeNotification={removeNotification} />
 
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm backdrop-blur-md bg-white/90">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -258,31 +165,27 @@ const App: React.FC = () => {
             className="text-slate-600 hover:text-slate-900 text-sm font-medium flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-50 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
+              <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
             </svg>
             Config
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Financial Summary */}
         <SummaryCards 
           metrics={metrics} 
           currency={config.currency} 
           locale={config.locale} 
         />
         
-        {/* Analytics Visualization (v1.7) */}
         <Analytics 
           entries={filteredEntries} 
           currency={config.currency} 
           locale={config.locale} 
         />
 
-        {/* Input Form */}
         <TransactionForm 
           onSubmit={handleFormSubmit} 
           isSubmitting={isSubmitting} 
@@ -290,7 +193,6 @@ const App: React.FC = () => {
           onCancelEdit={() => setEditingEntry(null)}
         />
 
-        {/* Filters */}
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
              <div className="flex items-baseline gap-3">
@@ -305,7 +207,6 @@ const App: React.FC = () => {
                  <button 
                    onClick={handleBulkDelete}
                    className="text-sm font-semibold text-red-600 hover:text-red-700 flex items-center gap-2 transition-colors border border-red-200 px-3 py-1.5 rounded bg-white shadow-sm hover:bg-red-50"
-                   title="Delete all currently visible entries"
                  >
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
@@ -348,7 +249,6 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* Settings Modal */}
       <SettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)}
