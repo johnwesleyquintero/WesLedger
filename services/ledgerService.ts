@@ -13,6 +13,8 @@ import { LOCAL_STORAGE_KEY } from '../constants';
     if (!sheet) return ContentService.createTextOutput(JSON.stringify({error: "Sheet 'ledger' not found"})).setMimeType(ContentService.MimeType.JSON);
     
     const data = sheet.getDataRange().getValues();
+    if (data.length < 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+
     const headers = data.shift(); // Remove headers
     
     // Convert to array of objects
@@ -81,7 +83,14 @@ export const fetchEntries = async (config: AppConfig): Promise<LedgerEntry[]> =>
       const response = await fetch(config.gasDeploymentUrl);
       if (!response.ok) throw new Error("Network response was not ok");
       
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse GAS response:", text);
+        throw new Error("Invalid response from server. Ensure 'Anyone' access is set.");
+      }
       
       // Handle potential API error response
       if (data && data.error) {
