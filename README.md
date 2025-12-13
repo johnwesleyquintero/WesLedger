@@ -1,7 +1,7 @@
-# 🧾 WesLedger
+# WesLedger
 
-> **Status:** System v1.5 (Secure)  
-> **Architecture:** Serverless / Sovereign  
+> **Status:** System v1.7 (Secure)
+> **Architecture:** Serverless / Sovereign
 > **Cost:** $0.00 / month
 
 **WesLedger** is a lightweight, operator-grade personal financial intelligence system. It prioritizes **data sovereignty**, **manual awareness**, and **zero overhead** over automation and vendor lock-in.
@@ -15,7 +15,7 @@ Most financial apps are traps: they charge you a monthly subscription to sell yo
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
 ```mermaid
 graph LR
@@ -27,7 +27,7 @@ The system uses a "Headless" approach where the logic lives in the browser, and 
 
 ---
 
-## 🚀 Deployment Protocol
+## Deployment Protocol
 
 ### Phase 1: The Vault (Google Sheets)
 
@@ -79,9 +79,9 @@ The system uses a "Headless" approach where the logic lives in the browser, and 
 
 ---
 
-## 🛡 Security Philosophy
+## Security Philosophy
 
-**System v1.5** uses **Bearer Token Authentication**.
+**System v1.7** uses **Bearer Token Authentication**.
 
 - **The Lock:** The Google Apps Script checks every request for a valid `token`.
 - **The Key:** Your React App stores this token in your browser's LocalStorage.
@@ -89,20 +89,21 @@ The system uses a "Headless" approach where the logic lives in the browser, and 
 
 ---
 
-## ⚡ Features
+## Features
 
 - **Full CRUD:** Create, Read, Update, Delete transactions.
 - **Real-time Metrics:** Instant calculation of Balance, Income, and Expense.
 - **Search & Filter:** Instant local filtering by keyword or category.
+- **Bulk Operations:** Batch delete filtered entries with strict confirmation.
+- **Analytics:** Visual trend lines and expense categorization.
 - **Export:** One-click CSV export of your current view.
 - **Demo Mode:** Works offline with LocalStorage for testing.
 - **Command Center:** Get your backend deployment code directly from the UI.
 
 ---
 
-## 🔮 Future Roadmap
+## Future Roadmap
 
-- [ ] **Data Visualization:** Monthly trend lines and category pie charts.
 - [ ] **Budget Envelopes:** Set limits per category.
 - [ ] **AI Analysis:** Integration with LLMs to query the sheet (e.g., "How much did I spend on coffee in 2023?").
 
