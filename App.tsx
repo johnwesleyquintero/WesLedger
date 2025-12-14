@@ -8,6 +8,7 @@ import { FilterBar } from './components/FilterBar';
 import { ToastContainer } from './components/Toast';
 import { Analytics } from './components/Analytics';
 import { Header } from './components/Header';
+import { ConfirmationModal } from './components/ConfirmationModal'; // New Import
 import { useLedger } from './hooks/useLedger';
 import { useLedgerAnalytics } from './hooks/useLedgerAnalytics';
 import { useAppConfig } from './hooks/useAppConfig';
@@ -23,6 +24,9 @@ const App: React.FC = () => {
   // --- Local UI State ---
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
+  
+  // --- Modal State ---
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
 
   // --- Filter State ---
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -47,7 +51,6 @@ const App: React.FC = () => {
   });
 
   // --- Dynamic Categories for Filter ---
-  // Combine defaults with any custom categories found in the entries
   const availableCategories = useMemo(() => {
     const customCategories = entries.map(e => e.category).filter(c => !DEFAULT_CATEGORIES.includes(c));
     const uniqueCustom = Array.from(new Set(customCategories));
@@ -78,17 +81,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
-    const count = filteredEntries.length;
-    if (count === 0) return;
+  // Step 1: User clicks "Clear View" -> Open Modal
+  const handleBulkDeleteClick = () => {
+    if (filteredEntries.length === 0) return;
+    setIsDeleteModalOpen(true);
+  };
 
-    const confirmed = window.confirm(
-      `⚠️ CRITICAL WARNING ⚠️\n\nYou are about to PERMANENTLY DELETE ${count} entries from your ledger.\n\nThis applies to the currently filtered view (Search: "${searchQuery}", Category: "${selectedCategory}", Month: "${selectedMonth}").\nThis action CANNOT be undone.\n\nAre you sure you want to proceed?`
-    );
-
-    if (confirmed) {
-      await bulkRemoveTransactions(filteredEntries);
-    }
+  // Step 2: User confirms in Modal -> Execute Logic
+  const executeBulkDelete = async () => {
+    await bulkRemoveTransactions(filteredEntries);
+    setIsDeleteModalOpen(false);
   };
 
   const handleSaveConfig = (newConfig: AppConfig) => {
@@ -148,7 +150,7 @@ const App: React.FC = () => {
              {filteredEntries.length > 0 && (
                <div className="flex gap-2 w-full sm:w-auto">
                  <button 
-                   onClick={handleBulkDelete}
+                   onClick={handleBulkDeleteClick}
                    className="flex-1 sm:flex-none justify-center text-sm font-semibold text-red-600 hover:text-red-700 flex items-center gap-2 transition-colors border border-red-200 px-3 py-1.5 rounded bg-white shadow-sm hover:bg-red-50"
                  >
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -195,12 +197,55 @@ const App: React.FC = () => {
 
       </main>
 
+      {/* Configuration Modal */}
       <SettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)}
         config={config}
         onSave={handleSaveConfig}
       />
+
+      {/* Destructive Action Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={executeBulkDelete}
+        title="Clear Current View"
+        confirmText="Yes, Delete All"
+        isLoading={isLoading}
+      >
+        <div className="space-y-4">
+          <p>
+            You are about to permanently delete <strong className="text-red-600">{filteredEntries.length} transactions</strong>. 
+            This action cannot be undone.
+          </p>
+          
+          <div className="bg-slate-100 p-3 rounded-md text-xs border border-slate-200">
+            <p className="font-semibold text-slate-500 uppercase tracking-wide mb-2">Scope of Deletion:</p>
+            <ul className="space-y-1 text-slate-700">
+              <li className="flex justify-between">
+                <span>Month:</span> 
+                <span className="font-mono font-bold">{selectedMonth || 'All Time'}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Category:</span> 
+                <span className="font-mono font-bold">{selectedCategory || 'All Categories'}</span>
+              </li>
+              {searchQuery && (
+                <li className="flex justify-between">
+                  <span>Search Term:</span> 
+                  <span className="font-mono font-bold">"{searchQuery}"</span>
+                </li>
+              )}
+            </ul>
+          </div>
+          
+          <p className="text-xs text-slate-500 italic">
+            Note: This will only remove the entries currently visible in the list below.
+          </p>
+        </div>
+      </ConfirmationModal>
+
     </div>
   );
 };
