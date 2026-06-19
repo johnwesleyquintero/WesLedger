@@ -50,7 +50,11 @@ const ToastItem: React.FC<{ note: Notification; onRemove: () => void }> = ({ not
       <div className="flex-1 text-sm font-medium">
         {note.message}
       </div>
-      <button onClick={onRemove} className="opacity-60 hover:opacity-100 transition-opacity">
+      <button 
+        onClick={onRemove} 
+        className="opacity-60 hover:opacity-100 transition-opacity"
+        aria-label="Dismiss notification"
+      >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>
     </div>

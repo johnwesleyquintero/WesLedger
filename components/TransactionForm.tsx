@@ -167,6 +167,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-4 transition-all shadow-sm text-slate-700 placeholder-slate-400 ${theme.inputBorder} ${theme.ring}`}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              aria-label="Transaction description"
             />
           </div>
 
@@ -185,6 +186,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg pl-6 pr-3 py-2 text-sm focus:outline-none focus:ring-4 transition-all shadow-sm font-mono font-bold ${theme.inputBorder} ${theme.ring} ${theme.accentText}`}
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value)}
+                aria-label="Transaction amount"
               />
             </div>
           </div>
@@ -196,6 +198,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     type="button" 
                     onClick={toggleCategoryMode}
                     className="text-[9px] underline text-slate-400 hover:text-slate-600"
+                    aria-label={isCustomCategory ? 'Use category list' : 'Enter custom category'}
                 >
                     {isCustomCategory ? 'Use List' : 'Custom?'}
                 </button>
@@ -210,6 +213,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                          className={`w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-4 transition-all shadow-sm text-slate-700 ${theme.inputBorder} ${theme.ring}`}
                          value={formData.category}
                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                         aria-label="Custom category name"
                      />
                  </div>
             ) : (
@@ -218,6 +222,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-4 transition-all shadow-sm appearance-none text-slate-700 ${theme.inputBorder} ${theme.ring}`}
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        aria-label="Select category"
                     >
                     {DEFAULT_CATEGORIES.map(c => (
                         <option key={c} value={c}>{c}</option>
