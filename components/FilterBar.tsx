@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 
 interface FilterBarProps {
   searchQuery: string;
@@ -10,23 +10,23 @@ interface FilterBarProps {
   availableCategories: string[];
 }
 
-export const FilterBar: React.FC<FilterBarProps> = ({ 
-  searchQuery, 
-  setSearchQuery, 
-  selectedCategory, 
+export const FilterBar: React.FC<FilterBarProps> = ({
+  searchQuery,
+  setSearchQuery,
+  selectedCategory,
   setSelectedCategory,
   selectedMonth,
   setSelectedMonth,
   availableCategories
 }) => {
 
-  const handleMonthChange = (direction: 'prev' | 'next') => {
+  const handleMonthChange = useCallback((direction: 'prev' | 'next') => {
     if (!selectedMonth) return;
     const date = new Date(`${selectedMonth}-01`); // Force 1st of month to avoid overflow
     date.setMonth(date.getMonth() + (direction === 'next' ? 1 : -1));
     const newMonth = date.toISOString().slice(0, 7);
     setSelectedMonth(newMonth);
-  };
+  }, [selectedMonth, setSelectedMonth]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 mb-6 bg-white p-4 border border-slate-200 rounded-lg shadow-sm items-center">
