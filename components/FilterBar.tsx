@@ -44,6 +44,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           placeholder="Search descriptions..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search transactions by description"
         />
       </div>
 
@@ -53,6 +54,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onClick={() => handleMonthChange('prev')}
           className="p-2 border border-slate-300 rounded-l-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
           title="Previous Month"
+          aria-label="Navigate to previous month"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -63,11 +65,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           className="block w-full lg:w-40 px-3 py-2 text-base border-y border-slate-300 focus:outline-none focus:border-slate-500 sm:text-sm bg-white text-slate-700 font-mono text-center rounded-none z-10"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
+          aria-label="Select month"
         />
         <button 
           onClick={() => handleMonthChange('next')}
           className="p-2 border border-slate-300 rounded-r-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
           title="Next Month"
+          aria-label="Navigate to next month"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -81,6 +85,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           className="block w-full pl-3 pr-10 py-2 text-base border border-slate-300 focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 sm:text-sm rounded-md bg-slate-50 appearance-none transition-all"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
+          aria-label="Filter by category"
         >
           <option value="">All Categories</option>
           {availableCategories.map((category) => (

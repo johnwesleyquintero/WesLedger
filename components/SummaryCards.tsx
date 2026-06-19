@@ -6,9 +6,26 @@ interface SummaryCardsProps {
   metrics: MetricSummary;
   currency: string;
   locale: string;
+  isLoading?: boolean;
 }
 
-export const SummaryCards: React.FC<SummaryCardsProps> = ({ metrics, currency, locale }) => {
+export const SummaryCards: React.FC<SummaryCardsProps> = ({ metrics, currency, locale, isLoading = false }) => {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-hidden">
+            <div className="flex justify-between items-start mb-3">
+              <div className="h-3 w-20 bg-slate-200 rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-slate-200 rounded-lg animate-pulse"></div>
+            </div>
+            <div className="h-8 w-32 bg-slate-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       {/* Current Balance - Hero Card */}
