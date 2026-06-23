@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LedgerEntry } from '../types';
+import { LedgerEntry, AppConfig } from '../types';
 import { DEFAULT_CATEGORIES } from '../constants';
 
 interface TransactionFormProps {
@@ -7,6 +7,8 @@ interface TransactionFormProps {
   isSubmitting: boolean;
   initialData?: LedgerEntry | null; // If present, we are in Edit Mode
   onCancelEdit?: () => void;
+  config: AppConfig;
+  onUpdateCustomCategories: (newCategory: string) => void;
 }
 
 type TransactionType = 'expense' | 'income';
@@ -15,8 +17,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmit, 
   isSubmitting, 
   initialData, 
-  onCancelEdit 
+  onCancelEdit,
+  config,
+  onUpdateCustomCategories
 }) => {
+  
+  // Combine default categories with custom categories from config
+  const allCategories = [...DEFAULT_CATEGORIES, ...config.customCategories];
   
   const [formData, setFormData] = useState<LedgerEntry>({
     id: '',
@@ -64,6 +71,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const absVal = Math.abs(parseFloat(amountStr));
     const finalAmount = txType === 'expense' ? -absVal : absVal;
+    
+    // If using a custom category (not in DEFAULT_CATEGORIES), save it to config
+    if (!DEFAULT_CATEGORIES.includes(formData.category)) {
+      onUpdateCustomCategories(formData.category);
+    }
     
     await onSubmit({ ...formData, amount: finalAmount });
     
@@ -214,7 +226,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                          value={formData.category}
                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                          aria-label="Custom category name"
+                         list="category-suggestions"
                      />
+                     <datalist id="category-suggestions">
+                       {config.customCategories.map(cat => (
+                         <option key={cat} value={cat} />
+                       ))}
+                     </datalist>
                  </div>
             ) : (
                 <div className="relative">
@@ -224,7 +242,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         aria-label="Select category"
                     >
-                    {DEFAULT_CATEGORIES.map(c => (
+                    {allCategories.map(c => (
                         <option key={c} value={c}>{c}</option>
                     ))}
                     </select>

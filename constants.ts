@@ -12,6 +12,14 @@ export const DEFAULT_CATEGORIES = [
   "Transport",
   "Travel",
   "Utilities",
+  "Home Improvements",
+  "Service",
+  "Savings",
+  "Payment",
+  "Non Salary Budget",
+  "Bill",
+  "Family",
+  "Investment",
   "Uncategorized"
 ];
 
@@ -45,6 +53,14 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Transport": "bg-cyan-100 text-cyan-800 border-cyan-200",
   "Travel": "bg-blue-100 text-blue-800 border-blue-200",
   "Utilities": "bg-amber-100 text-amber-800 border-amber-200",
+  "Home Improvements": "bg-stone-100 text-stone-800 border-stone-200",
+  "Service": "bg-violet-100 text-violet-800 border-violet-200",
+  "Savings": "bg-green-100 text-green-800 border-green-200",
+  "Payment": "bg-red-100 text-red-800 border-red-200",
+  "Non Salary Budget": "bg-lime-100 text-lime-800 border-lime-200",
+  "Bill": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "Family": "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
+  "Investment": "bg-emerald-100 text-emerald-800 border-emerald-200",
   "Uncategorized": "bg-gray-100 text-gray-600 border-gray-200"
 };
 
