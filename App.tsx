@@ -99,6 +99,15 @@ const App: React.FC = () => {
     showToast('Configuration saved', 'success');
   };
 
+  const handleUpdateCustomCategories = (newCategory: string) => {
+    if (!config.customCategories.includes(newCategory)) {
+      setConfig({
+        ...config,
+        customCategories: [...config.customCategories, newCategory]
+      });
+    }
+  };
+
   const handleExportCSV = () => {
     const success = generateAndDownloadCSV(filteredEntries);
     if (success) {
@@ -145,6 +154,8 @@ const App: React.FC = () => {
           isSubmitting={isSubmitting} 
           initialData={editingEntry}
           onCancelEdit={() => setEditingEntry(null)}
+          config={config}
+          onUpdateCustomCategories={handleUpdateCustomCategories}
         />
 
         <div className="mt-8">

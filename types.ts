@@ -20,6 +20,7 @@ export interface AppConfig {
   apiToken: string; // The Shared Secret
   currency: string; // e.g. 'USD', 'PHP'
   locale: string;   // e.g. 'en-US', 'en-PH'
+  customCategories: string[]; // User-defined categories
 }
 
 export interface MetricSummary {
