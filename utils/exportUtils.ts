@@ -31,3 +31,32 @@ export const generateAndDownloadCSV = (entries: LedgerEntry[]) => {
   
   return true;
 };
+
+export const copyTableAsMarkdown = (entries: LedgerEntry[]): boolean => {
+  if (entries.length === 0) return false;
+
+  const headers = ['Date', 'Description', 'Category', 'Amount'];
+  const headerRow = `| ${headers.join(' | ')} |`;
+  const separatorRow = `| ${headers.map(() => '---').join(' | ')} |`;
+  
+  const dataRows = entries.map(row => {
+    const escapePipe = (val: string | number | undefined) => 
+      String(val ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+    return [
+      escapePipe(row.date),
+      escapePipe(row.description),
+      escapePipe(row.category),
+      escapePipe(row.amount)
+    ].join(' | ');
+  });
+
+  const markdownContent = [headerRow, separatorRow, ...dataRows.map(row => `| ${row} |`)].join('\n');
+
+  navigator.clipboard.writeText(markdownContent).then(() => {
+    console.log('Markdown table copied to clipboard');
+  }).catch((err) => {
+    console.error('Failed to copy markdown:', err);
+  });
+
+  return true;
+};
