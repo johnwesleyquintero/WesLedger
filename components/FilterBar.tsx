@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface FilterBarProps {
   searchQuery: string;
@@ -19,6 +19,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   setSelectedMonth,
   availableCategories
 }) => {
+  
+  const [dateRangePreset, setDateRangePreset] = useState<string>('current');
 
   const handleMonthChange = useCallback((direction: 'prev' | 'next') => {
     if (!selectedMonth) return;
@@ -27,6 +29,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     const newMonth = date.toISOString().slice(0, 7);
     setSelectedMonth(newMonth);
   }, [selectedMonth, setSelectedMonth]);
+
+  const applyDateRangePreset = (preset: string) => {
+    setDateRangePreset(preset);
+    const now = new Date();
+    
+    switch (preset) {
+      case 'today':
+        setSelectedMonth(now.toISOString().slice(0, 7));
+        break;
+      case 'current':
+        setSelectedMonth(now.toISOString().slice(0, 7));
+        break;
+      case 'last30':
+        // For simplicity, just set to current month (full date range filtering would need more changes)
+        setSelectedMonth(now.toISOString().slice(0, 7));
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 mb-6 bg-white p-4 border border-slate-200 rounded-lg shadow-sm items-center">
@@ -41,18 +63,30 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <input
           type="text"
           className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 sm:text-sm transition-all"
-          placeholder="Search descriptions..."
+          placeholder="Search descriptions, categories, amounts..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search transactions by description"
         />
       </div>
 
-      {/* Month Navigator Group */}
+      {/* Date Range Presets */}
       <div className="flex items-center w-full lg:w-auto gap-1">
         <button 
+          onClick={() => applyDateRangePreset('today')}
+          className={`px-3 py-2 text-xs font-semibold rounded-md transition-colors ${dateRangePreset === 'today' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Today
+        </button>
+        <button 
+          onClick={() => applyDateRangePreset('current')}
+          className={`px-3 py-2 text-xs font-semibold rounded-md transition-colors ${dateRangePreset === 'current' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          This Month
+        </button>
+        <button 
           onClick={() => handleMonthChange('prev')}
-          className="p-2 border border-slate-300 rounded-l-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
+          className="p-2 border border-slate-300 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
           title="Previous Month"
           aria-label="Navigate to previous month"
         >
@@ -62,14 +96,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </button>
         <input 
           type="month"
-          className="block w-full lg:w-40 px-3 py-2 text-base border-y border-slate-300 focus:outline-none focus:border-slate-500 sm:text-sm bg-white text-slate-700 font-mono text-center rounded-none z-10"
+          className="block w-full lg:w-32 px-3 py-2 text-base border-y border-slate-300 focus:outline-none focus:border-slate-500 sm:text-sm bg-white text-slate-700 font-mono text-center rounded-none z-10"
           value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
+          onChange={(e) => { setSelectedMonth(e.target.value); setDateRangePreset('custom'); }}
           aria-label="Select month"
         />
         <button 
           onClick={() => handleMonthChange('next')}
-          className="p-2 border border-slate-300 rounded-r-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
+          className="p-2 border border-slate-300 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
           title="Next Month"
           aria-label="Navigate to next month"
         >
@@ -102,7 +136,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {/* Clear Button */}
       {(searchQuery || selectedCategory || (selectedMonth !== new Date().toISOString().slice(0, 7))) && (
          <button
-           onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedMonth(new Date().toISOString().slice(0, 7)); }}
+           onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedMonth(new Date().toISOString().slice(0, 7)); setDateRangePreset('current'); }}
            className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-red-600 border border-transparent hover:border-red-200 hover:bg-red-50 rounded transition-all whitespace-nowrap"
          >
            Reset

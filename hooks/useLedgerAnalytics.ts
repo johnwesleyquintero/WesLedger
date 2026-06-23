@@ -17,7 +17,13 @@ export const useLedgerAnalytics = ({
   
   const filteredEntries = useMemo(() => {
     return entries.filter(entry => {
-      const matchesSearch = entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+      // Search across description, category, and amount
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = searchQuery === '' || 
+        entry.description.toLowerCase().includes(searchLower) ||
+        entry.category.toLowerCase().includes(searchLower) ||
+        entry.amount.toString().includes(searchLower);
+      
       const matchesCategory = selectedCategory ? entry.category === selectedCategory : true;
       let matchesMonth = true;
       if (selectedMonth) {

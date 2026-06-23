@@ -13,7 +13,7 @@ import { useLedger } from './hooks/useLedger';
 import { useLedgerAnalytics } from './hooks/useLedgerAnalytics';
 import { useAppConfig } from './hooks/useAppConfig';
 import { useNotifications } from './hooks/useNotifications';
-import { generateAndDownloadCSV, copyTableAsMarkdown } from './utils/exportUtils';
+import { generateAndDownloadCSV, copyTableAsMarkdown, exportAsJSON } from './utils/exportUtils';
 import { DEFAULT_CATEGORIES } from './constants';
 
 const App: React.FC = () => {
@@ -27,6 +27,8 @@ const App: React.FC = () => {
   
   // --- Modal State ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [entryToDelete, setEntryToDelete] = useState<LedgerEntry | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'bulk'>('single');
 
   // --- Filter State ---
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -75,15 +77,23 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteClick = async (entry: LedgerEntry) => {
-    if (window.confirm(`Are you sure you want to delete "${entry.description}"?`)) {
-      await removeTransaction(entry);
+  const handleDeleteClick = (entry: LedgerEntry) => {
+    setEntryToDelete(entry);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleSingleDeleteConfirm = async () => {
+    if (entryToDelete) {
+      await removeTransaction(entryToDelete);
+      setEntryToDelete(null);
+      setIsDeleteModalOpen(false);
     }
   };
 
   // Step 1: User clicks "Clear View" -> Open Modal
   const handleBulkDeleteClick = () => {
     if (filteredEntries.length === 0) return;
+    setDeleteMode('bulk');
     setIsDeleteModalOpen(true);
   };
 
@@ -91,6 +101,13 @@ const App: React.FC = () => {
   const executeBulkDelete = async () => {
     await bulkRemoveTransactions(filteredEntries);
     setIsDeleteModalOpen(false);
+    setDeleteMode('single');
+  };
+
+  const handleModalClose = () => {
+    setIsDeleteModalOpen(false);
+    setEntryToDelete(null);
+    setDeleteMode('single');
   };
 
   const handleSaveConfig = (newConfig: AppConfig) => {
@@ -123,6 +140,15 @@ const App: React.FC = () => {
       showToast('Table copied as Markdown', 'success');
     } else {
       showToast('No data to copy', 'info');
+    }
+  };
+
+  const handleExportJSON = () => {
+    const success = exportAsJSON(filteredEntries);
+    if (success) {
+      showToast('JSON export generated', 'success');
+    } else {
+      showToast('No data to export', 'info');
     }
   };
 
@@ -199,8 +225,19 @@ const App: React.FC = () => {
                      <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                      <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
                    </svg>
-                   <span className="hidden sm:inline">Export CSV</span>
-                   <span className="sm:hidden">Export</span>
+                   <span className="hidden sm:inline">CSV</span>
+                   <span className="sm:hidden">CSV</span>
+                 </button>
+                 <button 
+                   onClick={handleExportJSON}
+                   className="flex-1 sm:flex-none justify-center text-sm font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-2 transition-colors border border-slate-200 px-3 py-1.5 rounded bg-white shadow-sm hover:shadow"
+                 >
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                     <path d="M8.217 1.146a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L11.793 5.5 8.217 1.929a.5.5 0 0 1 0-.708zM5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zM3.5 8a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5z"/>
+                     <path d="M2 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2H2zm12-1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h12z"/>
+                   </svg>
+                   <span className="hidden sm:inline">JSON</span>
+                   <span className="sm:hidden">JSON</span>
                  </button>
                </div>
               )}
@@ -239,42 +276,61 @@ const App: React.FC = () => {
       {/* Destructive Action Modal */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={executeBulkDelete}
-        title="Clear Current View"
-        confirmText="Yes, Delete All"
+        onClose={handleModalClose}
+        onConfirm={deleteMode === 'bulk' ? executeBulkDelete : handleSingleDeleteConfirm}
+        title={deleteMode === 'bulk' ? "Clear Current View" : "Delete Transaction"}
+        confirmText={deleteMode === 'bulk' ? "Yes, Delete All" : "Yes, Delete"}
         isLoading={isLoading}
       >
-        <div className="space-y-4">
-          <p>
-            You are about to permanently delete <strong className="text-red-600">{filteredEntries.length} transactions</strong>. 
-            This action cannot be undone.
-          </p>
-          
-          <div className="bg-slate-100 p-3 rounded-md text-xs border border-slate-200">
-            <p className="font-semibold text-slate-500 uppercase tracking-wide mb-2">Scope of Deletion:</p>
-            <ul className="space-y-1 text-slate-700">
-              <li className="flex justify-between">
-                <span>Month:</span> 
-                <span className="font-mono font-bold">{selectedMonth || 'All Time'}</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Category:</span> 
-                <span className="font-mono font-bold">{selectedCategory || 'All Categories'}</span>
-              </li>
-              {searchQuery && (
+        {deleteMode === 'bulk' ? (
+          <div className="space-y-4">
+            <p>
+              You are about to permanently delete <strong className="text-red-600">{filteredEntries.length} transactions</strong>. 
+              This action cannot be undone.
+            </p>
+            
+            <div className="bg-slate-100 p-3 rounded-md text-xs border border-slate-200">
+              <p className="font-semibold text-slate-500 uppercase tracking-wide mb-2">Scope of Deletion:</p>
+              <ul className="space-y-1 text-slate-700">
                 <li className="flex justify-between">
-                  <span>Search Term:</span> 
-                  <span className="font-mono font-bold">"{searchQuery}"</span>
+                  <span>Month:</span> 
+                  <span className="font-mono font-bold">{selectedMonth || 'All Time'}</span>
                 </li>
-              )}
-            </ul>
+                <li className="flex justify-between">
+                  <span>Category:</span> 
+                  <span className="font-mono font-bold">{selectedCategory || 'All Categories'}</span>
+                </li>
+                {searchQuery && (
+                  <li className="flex justify-between">
+                    <span>Search Term:</span> 
+                    <span className="font-mono font-bold">"{searchQuery}"</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+            
+            <p className="text-xs text-slate-500 italic">
+              Note: This will only remove the entries currently visible in the list below.
+            </p>
           </div>
-          
-          <p className="text-xs text-slate-500 italic">
-            Note: This will only remove the entries currently visible in the list below.
-          </p>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <p>
+              You are about to permanently delete the transaction:
+            </p>
+            <div className="bg-slate-100 p-4 rounded-md border border-slate-200">
+              <p className="font-semibold text-slate-900">{entryToDelete?.description}</p>
+              <div className="flex justify-between mt-2 text-sm text-slate-600">
+                <span>Date: {entryToDelete?.date}</span>
+                <span className="font-mono font-bold">{entryToDelete?.amount < 0 ? '-' : '+'}{Math.abs(entryToDelete?.amount || 0).toFixed(2)}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Category: {entryToDelete?.category}</p>
+            </div>
+            <p className="text-xs text-slate-500 italic">
+              This action cannot be undone.
+            </p>
+          </div>
+        )}
       </ConfirmationModal>
 
     </div>
